@@ -1,13 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { ChevronDown, ChevronUp, Download, Table } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 
@@ -64,7 +61,6 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 export default function CalculatorPage() {
   const [investmentType, setInvestmentType] = useState<InvestmentType>('buyAndHold');
   const [activeTab, setActiveTab] = useState('property');
-  const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Property and deal details state
   const [propertyDetails, setPropertyDetails] = useState<PropertyDetails>({
@@ -120,7 +116,7 @@ export default function CalculatorPage() {
   });
   
   // User details state
-  const [userDetails, setUserDetails] = useState<UserDetails>({
+  const [userDetails] = useState<UserDetails>({
     name: '',
     phone: '',
     email: ''
@@ -133,9 +129,14 @@ export default function CalculatorPage() {
   
   // Add isExporting state
   const [isExporting, setIsExporting] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+
+  const clearValidationErrors = useCallback(() => {
+    setValidationErrors(prev => (prev.length ? [] : prev));
+  }, []);
   
   // Get tabs based on investment type
-  const getTabsForInvestmentType = () => {
+  const tabsForInvestmentType = useMemo(() => {
     logger.debug('Getting tabs for investment type', { investmentType });
     switch (investmentType) {
       case 'buyAndHold':
@@ -166,10 +167,11 @@ export default function CalculatorPage() {
       default:
         return [];
     }
-  };
+  }, [investmentType]);
   
   // Handle investment type change
   const handleInvestmentTypeChange = (type: InvestmentType) => {
+    clearValidationErrors();
     logger.info('Changing investment type', { type });
     setInvestmentType(type);
     setActiveTab('property'); // Reset to property tab when changing investment type
@@ -190,6 +192,7 @@ export default function CalculatorPage() {
   
   // Handle property details change
   const handlePropertyDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Property details change', { name: e.target.name, value: e.target.value });
     setPropertyDetails(prev => ({
       ...prev,
@@ -199,6 +202,7 @@ export default function CalculatorPage() {
   
   // Handle deal details change
   const handleDealDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Deal details change', { name: e.target.name, value: e.target.value });
     setDealDetails(prev => ({
       ...prev,
@@ -213,6 +217,7 @@ export default function CalculatorPage() {
   
   // Handle short term financing change
   const handleShortTermFinancingChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Short term financing change', { name: e.target.name, value: e.target.value });
     setShortTermFinancing(prev => ({
       ...prev,
@@ -222,6 +227,7 @@ export default function CalculatorPage() {
   
   // Handle financing details change
   const handleFinancingDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Financing details change', { name: e.target.name, value: e.target.value });
     setFinancingDetails(prev => ({
       ...prev,
@@ -231,6 +237,7 @@ export default function CalculatorPage() {
   
   // Handle rental details change
   const handleRentalDetailsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Rental details change', { name: e.target.name, value: e.target.value });
     setRentalDetails(prev => ({
       ...prev,
@@ -245,6 +252,7 @@ export default function CalculatorPage() {
   
   // Handle rental type change
   const handleRentalTypeChange = (value: string) => {
+    clearValidationErrors();
     logger.debug('Rental type change', { value });
     setRentalDetails(prev => ({
       ...prev,
@@ -254,6 +262,7 @@ export default function CalculatorPage() {
   
   // Handle sale inputs change
   const handleSaleInputsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    clearValidationErrors();
     logger.debug('Sale inputs change', { name: e.target.name, value: e.target.value });
     setSaleInputs(prev => ({
       ...prev,
@@ -285,6 +294,51 @@ export default function CalculatorPage() {
       [year]: !prev[year]
     }));
   };
+  
+  // Validate core numeric inputs before calculations/exports
+  const validateInputs = useCallback(() => {
+    const errors: string[] = [];
+    const numericFields = [
+      { label: 'Purchase price', value: dealDetails.purchasePrice, min: 1 },
+      { label: 'After repair value', value: dealDetails.afterRepairValue, min: 1 },
+      { label: 'Rehab cost', value: dealDetails.rehabCost, min: 0 },
+    ];
+    
+    numericFields.forEach(field => {
+      const parsed = parseFloat(field.value);
+      if (isNaN(parsed) || parsed < field.min) {
+        errors.push(`${field.label} must be ${field.min > 0 ? 'at least ' + field.min : '0 or greater'}.`);
+      }
+    });
+
+    if (investmentType !== 'flip') {
+      const rent = parseFloat(rentalDetails.monthlyRent);
+      if (isNaN(rent) || rent <= 0) {
+        errors.push('Monthly rent must be greater than 0 for rental strategies.');
+      }
+    }
+
+    const longTermRate = parseFloat(financingDetails.interestRate);
+    if (isNaN(longTermRate) || longTermRate <= 0) {
+      errors.push('Long-term interest rate must be greater than 0.');
+    }
+
+    if (investmentType !== 'buyAndHold') {
+      const shortTermRate = parseFloat(shortTermFinancing.interestRate);
+      if (isNaN(shortTermRate) || shortTermRate <= 0) {
+        errors.push('Short-term interest rate must be greater than 0.');
+      }
+    }
+
+    if (investmentType === 'flip' || investmentType === 'brrrr') {
+      const holding = parseFloat(dealDetails.holdingPeriod);
+      if (isNaN(holding) || holding <= 0) {
+        errors.push('Holding period must be greater than 0 months.');
+      }
+    }
+
+    return errors;
+  }, [dealDetails.afterRepairValue, dealDetails.holdingPeriod, dealDetails.purchasePrice, dealDetails.rehabCost, financingDetails.interestRate, investmentType, rentalDetails.monthlyRent, shortTermFinancing.interestRate]);
   
   // Calculate BRRRR percentage
   const calculateBrrrPercentage = () => {
@@ -327,6 +381,14 @@ export default function CalculatorPage() {
       rentalDetails, 
       saleInputs 
     });
+
+    const errors = validateInputs();
+    if (errors.length) {
+      setValidationErrors(errors);
+      setIsCalculated(false);
+      return;
+    }
+    setValidationErrors([]);
     
     // Clear previous calculations
     setCalculatedOutput({});
@@ -422,13 +484,20 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
     ) + totalCashFlow;
   };
 
-  // Define formatPercent function correctly 
-  const formatPercent = (value: number) => {
-    return value >= 0 ? `+${formatNumber(value)}` : `${formatNumber(value)}`;
-  };
 
   // Export to PDF function
   const handleExportPDF = async () => {
+    const errors = validateInputs();
+    if (errors.length) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    if (!isCalculated) {
+      setValidationErrors(['Please calculate the investment before exporting.']);
+      return;
+    }
+
     try {
       logger.info('Starting PDF export process');
       setIsExporting(true);
@@ -490,9 +559,9 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
       ];
       
       // Track the last table position manually
-      let lastTableY = (doc as any).lastAutoTable?.finalY || 110; 
+      let lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || 110; 
       
-      const dealTableHeight = autoTable(doc, {
+      autoTable(doc, {
         startY: lastTableY + 20,
         head: [['Deal Structure', 'Value']],
         body: dealData,
@@ -502,7 +571,7 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
       });
       
       // Update last table position
-      lastTableY = (doc as any).lastAutoTable?.finalY || lastTableY + 100;
+      lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || lastTableY + 100;
       
       // Add rental details if applicable
       if (investmentType === 'buyAndHold' || investmentType === 'brrrr') {
@@ -528,7 +597,7 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
         });
         
         // Update last table position
-        lastTableY = (doc as any).lastAutoTable?.finalY || lastTableY + 100;
+        lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || lastTableY + 100;
       }
       
       // Add investment summary
@@ -585,7 +654,7 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
         });
         
         // Update last table position
-        lastTableY = (doc as any).lastAutoTable?.finalY || lastTableY + 100;
+        lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || lastTableY + 100;
       }
       
       // Add yearly projections table
@@ -615,7 +684,7 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
           styles: { fontSize: 9 }
         });
         
-        lastTableY = (doc as any).lastAutoTable?.finalY || 150;
+        lastTableY = (doc as unknown as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || 150;
         
         // Add expense breakdown section
         doc.setFontSize(14);
@@ -689,6 +758,17 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
   
   // Export to Excel function
   const handleExportExcel = async () => {
+    const errors = validateInputs();
+    if (errors.length) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    if (!isCalculated) {
+      setValidationErrors(['Please calculate the investment before exporting.']);
+      return;
+    }
+
     try {
       logger.info('Starting Excel export process');
       setIsExporting(true);
@@ -1079,13 +1159,24 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
               </div>
             </TooltipProvider>
           </div>
-        </CardContent>
-      </Card>
+      </CardContent>
+    </Card>
+
+      {validationErrors.length > 0 && (
+        <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+          <p className="font-semibold mb-2">Please fix the following before continuing:</p>
+          <ul className="list-disc space-y-1 pl-5">
+            {validationErrors.map((error, index) => (
+              <li key={`${error}-${index}`}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Tabs Interface */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="w-full h-auto flex-wrap justify-start gap-2 bg-muted/20 p-2">
-          {getTabsForInvestmentType().map((tab) => (
+          {tabsForInvestmentType.map((tab) => (
             <TabsTrigger 
               key={tab.value} 
               value={tab.value} 
@@ -1099,7 +1190,6 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
                 data-[state=active]:bg-primary 
                 data-[state=active]:text-primary-foreground
                 data-[state=active]:shadow-md
-                ${isTransitioning ? 'opacity-50' : ''}
               `}
             >
               {tab.label}
@@ -1150,7 +1240,6 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
         <TabsContent value="rehab" className="p-0 pt-2">
           <RehabEstimatorForm
             propertyDetails={propertyDetails}
-            rehabCost={dealDetails.rehabCost}
             onRehabCostChange={(cost) => {
               // Only update if the cost is different
               if (cost !== dealDetails.rehabCost) {
@@ -1325,6 +1414,7 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
             handleSendToOffLeash={handleSendToOffLeash}
             handleExportPDF={handleExportPDF}
             handleExportExcel={handleExportExcel}
+            isExporting={isExporting}
           />
         </div>
       )}

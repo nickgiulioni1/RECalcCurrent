@@ -65,7 +65,7 @@ type PropertyDetails = {
 import { useState, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -283,11 +283,6 @@ export function Page() {
 const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({});
 
   const [isCalculated, setIsCalculated] = useState(false);
-  const [userDetails] = useState({
-    name: '',
-    phone: '',
-    email: ''
-  });
 
   // Add this state at the top with other state declarations
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -300,6 +295,31 @@ const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({
         categoryTotal + (item.checked ? item.extended : 0), 0)
     , 0);
   }, [rehabDetails]);
+
+  // Add this new helper function to calculate rehab duration
+  const calculateRehabDuration = useCallback((rehabCost: number): number => {
+    log('Calculating rehab duration for cost:', rehabCost);
+    
+    // For BRRRR and flip, ensure minimum of 1 month
+    if (investmentType === 'brrrr' || investmentType === 'flip') {
+      if (rehabCost <= 0) return 1;
+      if (rehabCost <= 15000) return 1;
+      if (rehabCost <= 30000) return 2;
+      if (rehabCost <= 50000) return 3;
+      if (rehabCost <= 75000) return 4;
+      if (rehabCost <= 100000) return 5;
+      return 6;
+    }
+    
+    // For buy and hold, allow 0 months
+    if (rehabCost <= 0) return 0;
+    if (rehabCost <= 15000) return 1;
+    if (rehabCost <= 30000) return 2;
+    if (rehabCost <= 50000) return 3;
+    if (rehabCost <= 75000) return 4;
+    if (rehabCost <= 100000) return 5;
+    return 6;
+  }, [investmentType]);
 
   // Remove the separate useEffect for updateRehabDetails
   useEffect(() => {
@@ -358,7 +378,7 @@ const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({
 
       return newState;
     });
-  }, [propertyDetails, rehabStrategy]);
+  }, [propertyDetails, rehabStrategy, calculateTotalRehabCost]);
 
   const updateRehabDetails = useCallback((propertyDetails: PropertyDetails, strategy: string) => {
     console.log('Updating rehab details', { propertyDetails, strategy });
@@ -447,7 +467,7 @@ const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({
         holdingPeriod: duration.toString()
       }));
     }
-  }, [dealDetails.rehabCost, calculateTotalRehabCost]);
+  }, [dealDetails.rehabCost, calculateTotalRehabCost, calculateRehabDuration]);
 
   const resetCalculationState = () => {
     log('Resetting calculation state');
@@ -885,7 +905,6 @@ const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({
     const afterRepairValue = parseFloat(dealDetails.afterRepairValue);
     const rehabCost = parseFloat(dealDetails.rehabCost) || 0;
     const purchasePrice = parseFloat(dealDetails.purchasePrice);
-    const initialClosingCosts = parseFloat(String(dealDetails.closingCosts || '0'));
     
     // Validate required inputs
     if (isNaN(purchasePrice) || purchasePrice <= 0) {
@@ -1053,31 +1072,6 @@ const [calculatedOutput, setCalculatedOutput] = useState<CalculatedOutputType>({
   // Helper function to set text color based on value for PDF
   const setTextColorForValue = (doc: jsPDFType, value: number) => {
     doc.setTextColor(value < 0 ? 255 : 0, 0, 0);
-  };
-
-  // Add this new helper function to calculate rehab duration
-  const calculateRehabDuration = (rehabCost: number): number => {
-    log('Calculating rehab duration for cost:', rehabCost);
-    
-    // For BRRRR and flip, ensure minimum of 1 month
-    if (investmentType === 'brrrr' || investmentType === 'flip') {
-      if (rehabCost <= 0) return 1;
-      if (rehabCost <= 15000) return 1;
-      if (rehabCost <= 30000) return 2;
-      if (rehabCost <= 50000) return 3;
-      if (rehabCost <= 75000) return 4;
-      if (rehabCost <= 100000) return 5;
-      return 6;
-    }
-    
-    // For buy and hold, allow 0 months
-    if (rehabCost <= 0) return 0;
-    if (rehabCost <= 15000) return 1;
-    if (rehabCost <= 30000) return 2;
-    if (rehabCost <= 50000) return 3;
-    if (rehabCost <= 75000) return 4;
-    if (rehabCost <= 100000) return 5;
-    return 6;
   };
 
   // Add this calculateInvestment function

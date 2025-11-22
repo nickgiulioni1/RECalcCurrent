@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,14 +27,12 @@ export type RehabCategory = {
 
 interface RehabEstimatorFormProps {
   propertyDetails: PropertyDetails;
-  rehabCost: string;
   onRehabCostChange: (cost: string) => void;
   onHoldingPeriodChange: (period: string) => void;
 }
 
 export default function RehabEstimatorForm({
   propertyDetails,
-  rehabCost,
   onRehabCostChange,
   onHoldingPeriodChange
 }: RehabEstimatorFormProps) {
@@ -43,7 +41,7 @@ export default function RehabEstimatorForm({
   const [manuallyModified, setManuallyModified] = useState<boolean>(false);
   
   // Calculate total rehab cost
-  const calculateTotalRehabCost = (): number => {
+  const calculateTotalRehabCost = useCallback((): number => {
     let total = 0;
     Object.values(rehabDetails).forEach(items => {
       items.forEach(item => {
@@ -54,10 +52,10 @@ export default function RehabEstimatorForm({
     });
     logger.debug('Calculated total rehab cost', { total });
     return total;
-  };
+  }, [rehabDetails]);
 
   // Calculate rehab duration
-  const calculateRehabDuration = (cost: number): number => {
+  const calculateRehabDuration = useCallback((cost: number): number => {
     // Default to 1 month minimum
     let duration = 1;
     
@@ -68,7 +66,7 @@ export default function RehabEstimatorForm({
     
     logger.debug('Calculated rehab duration', { cost, duration });
     return duration;
-  };
+  }, []);
 
   // Update rehab details when property details change
   useEffect(() => {
@@ -125,9 +123,6 @@ export default function RehabEstimatorForm({
           });
         });
 
-        // Calculate the total cost but don't call the callbacks inside the useEffect
-        const totalCost = calculateTotalCostFromDetails(newState);
-        
         return newState;
       });
     }
@@ -148,20 +143,8 @@ export default function RehabEstimatorForm({
         manuallyModified 
       });
     }
-  }, [rehabDetails, manuallyModified]);
+  }, [rehabDetails, manuallyModified, calculateTotalRehabCost, onRehabCostChange, onHoldingPeriodChange, calculateRehabDuration]);
 
-  // Calculate total cost from rehab details
-  const calculateTotalCostFromDetails = (details: RehabCategory): number => {
-    let total = 0;
-    Object.values(details).forEach(items => {
-      items.forEach(item => {
-        if (item.checked) {
-          total += item.extended;
-        }
-      });
-    });
-    return total;
-  };
 
   // Handle rehab strategy change
   const handleRehabStrategyChange = (value: string) => {

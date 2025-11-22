@@ -218,7 +218,6 @@ export const calculateInvestmentOutput = (
   const purchaseLoaned = parseFloat(shortTermFinancing.purchaseLoaned) / 100;
   const rehabLoaned = parseFloat(shortTermFinancing.rehabLoaned) / 100;
   const shortTermInterestRate = parseFloat(shortTermFinancing.interestRate) / 100 / 12; // monthly rate
-  const shortTermLenderPoints = parseFloat(shortTermFinancing.lendersPoints) / 100;
 
   let runningTotalCashInvested = 0;
 

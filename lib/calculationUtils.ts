@@ -151,7 +151,7 @@ export const calculateRehabDuration = (rehabCost: number): number => {
 /**
  * Validates numerical inputs for calculations to prevent errors
  */
-export const validateCalculationInputs = (inputs: Record<string, any>, requiredFields: string[] = []): boolean => {
+export const validateCalculationInputs = (inputs: Record<string, unknown>, requiredFields: string[] = []): boolean => {
   let isValid = true;
   const issues: string[] = [];
   

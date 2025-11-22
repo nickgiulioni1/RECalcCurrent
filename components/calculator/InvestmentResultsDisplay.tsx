@@ -39,13 +39,13 @@ export default function InvestmentResultsDisplay({
   toggleYearExpansion,
   investmentType,
   calculateProfit,
-  calculateBrrrPercentage,
+  calculateBrrrPercentage: _calculateBrrrPercentage, // eslint-disable-line @typescript-eslint/no-unused-vars
   dealDetails,
-  propertyDetails,
   rentalDetails,
   handleSendToOffLeash,
   handleExportPDF,
-  handleExportExcel
+  handleExportExcel,
+  isExporting
 }: {
   calculatedOutput: CalculatedOutputType;
   expandedYears: ExpandedYearsState;
@@ -59,6 +59,7 @@ export default function InvestmentResultsDisplay({
   handleSendToOffLeash: () => void;
   handleExportPDF: () => void;
   handleExportExcel: () => void;
+  isExporting: boolean;
 }) {
   logger.debug('Rendering InvestmentResultsDisplay', { investmentType, hasCalculatedOutput: Object.keys(calculatedOutput).length > 0 });
 
@@ -111,6 +112,12 @@ export default function InvestmentResultsDisplay({
     totalInvestment: calculateTotalInvestment()
   });
 
+  const profit = calculateProfit();
+  const purchasePlusRehab = (parseFloat(dealDetails.purchasePrice) || 0) + (parseFloat(dealDetails.rehabCost) || 0);
+  const roi = purchasePlusRehab > 0 ? (profit / purchasePlusRehab) * 100 : 0;
+  const afterRepairValue = parseFloat(dealDetails.afterRepairValue) || 0;
+  const profitMargin = afterRepairValue > 0 ? (profit / afterRepairValue) * 100 : 0;
+
   return (
     <div className="space-y-8">
       <Card className="shadow-md hover:shadow-lg transition-shadow">
@@ -123,18 +130,22 @@ export default function InvestmentResultsDisplay({
                 size="sm" 
                 onClick={handleExportPDF}
                 className="flex items-center gap-1 text-xs"
+                disabled={isExporting}
+                aria-busy={isExporting}
               >
                 <Download className="h-3.5 w-3.5" />
-                Export PDF
+                {isExporting ? 'Exporting...' : 'Export PDF'}
               </Button>
               <Button 
                 variant="download" 
                 size="sm" 
                 onClick={handleExportExcel}
                 className="flex items-center gap-1 text-xs"
+                disabled={isExporting}
+                aria-busy={isExporting}
               >
                 <Table className="h-3.5 w-3.5" />
-                Export Excel
+                {isExporting ? 'Exporting...' : 'Export Excel'}
               </Button>
             </div>
           </div>
@@ -143,20 +154,20 @@ export default function InvestmentResultsDisplay({
           <div className="grid grid-cols-2 gap-4 mt-2">
             <div>
               <p className="text-sm text-gray-500">Estimated Profit</p>
-              <p className={`text-lg font-bold ${getValueColor(calculateProfit())}`}>
-                ${formatNumber(calculateProfit())}
+              <p className={`text-lg font-bold ${getValueColor(profit)}`}>
+                ${formatNumber(profit)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">ROI</p>
-              <p className={`text-lg font-bold ${getValueColor((calculateProfit() / (parseFloat(dealDetails.purchasePrice) + parseFloat(dealDetails.rehabCost))) * 100)}`}>
-                {formatPercentage((calculateProfit() / (parseFloat(dealDetails.purchasePrice) + parseFloat(dealDetails.rehabCost))) * 100)}
+              <p className={`text-lg font-bold ${getValueColor(roi)}`}>
+                {formatPercentage(roi)}
               </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Profit Margin</p>
-              <p className={`text-lg font-bold ${getValueColor((calculateProfit() / parseFloat(dealDetails.afterRepairValue)) * 100)}`}>
-                {formatPercentage((calculateProfit() / parseFloat(dealDetails.afterRepairValue)) * 100)}
+              <p className={`text-lg font-bold ${getValueColor(profitMargin)}`}>
+                {formatPercentage(profitMargin)}
               </p>
             </div>
             <div>
@@ -487,8 +498,6 @@ export default function InvestmentResultsDisplay({
     </div>
   );
 }
-
-
 
 
 
