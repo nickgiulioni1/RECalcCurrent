@@ -16,6 +16,7 @@
 
 # production
 /build
+# Note: /dist is NOT ignored - needed for Tiiny.Host deployment
 
 # misc
 .DS_Store
