@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "npm run build:test && node --test dist/tests/**/*.test.js",
+    "build:test": "tsc -p tsconfig.test.json"
   },
   "dependencies": {
     "@radix-ui/react-checkbox": "^1.1.2",
