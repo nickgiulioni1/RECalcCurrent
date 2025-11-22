@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ export default function RehabEstimatorForm({
   const [rehabStrategy, setRehabStrategy] = useState<string>('rental');
   const [rehabDetails, setRehabDetails] = useState<RehabCategory>(() => getDefaultRehabItems());
   const [manuallyModified, setManuallyModified] = useState<boolean>(false);
+  const previousRehabStrategy = useRef<string>(rehabStrategy);
   
   // Calculate total rehab cost
   const calculateTotalRehabCost = useCallback((): number => {
@@ -77,7 +78,10 @@ export default function RehabEstimatorForm({
       rehabStrategy
     });
     
-    if (!manuallyModified) {
+    const strategyChanged = previousRehabStrategy.current !== rehabStrategy;
+
+    // Always update when the strategy changes so prices swap between rental and flip/AirBNB grades
+    if (!manuallyModified || strategyChanged) {
       setRehabDetails(prevState => {
         const newState = { ...prevState };
         const isFlipAirbnb = rehabStrategy === 'flipAirbnb';
@@ -126,6 +130,8 @@ export default function RehabEstimatorForm({
         return newState;
       });
     }
+
+    previousRehabStrategy.current = rehabStrategy;
   }, [propertyDetails, rehabStrategy, manuallyModified]);
   
   // Use a separate useEffect to update the parent components when rehab details change
