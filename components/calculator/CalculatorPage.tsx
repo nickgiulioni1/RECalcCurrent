@@ -5,8 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import Image from 'next/image';
-import Link from 'next/link';
 
 import { logger } from '@/lib/logger';
 import { 
@@ -1049,23 +1047,6 @@ After Repair Value: $${formatNumber(parseFloat(dealDetails.afterRepairValue))}`)
       {/* Header section */}
       <div className="flex flex-col sm:flex-row items-center justify-between py-6 mb-8 gap-4">
         <div className="flex items-center gap-4 w-full sm:w-auto">
-          <Link 
-            href="https://offleashconstruction.com" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="flex items-center"
-            onClick={() => logger.info('OffLeash Construction logo clicked')}
-          >
-            <Image
-              src="/logo-menu.png" 
-              alt="OffLeash Construction Logo"
-              width={150}
-              height={40}
-              priority
-              onLoad={() => logger.debug('OffLeash Construction logo loaded successfully')}
-              onError={() => logger.warn('Failed to load OffLeash Construction logo')}
-            />
-          </Link>
           <h1 className="text-2xl sm:text-3xl font-bold text-primary">
             Real Estate Calculator
           </h1>
